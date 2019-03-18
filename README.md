@@ -1,1 +1,1 @@
-base images for x11 containers
+Examples of algorithms for Golang
