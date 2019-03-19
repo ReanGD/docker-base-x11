@@ -1,0 +1,57 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "make build",
+            "group": "build",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Build and Run",
+            "type": "shell",
+            "command": "make run",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Test file",
+            "type": "shell",
+            "command": "go test ${file}",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Test all unit",
+            "type": "shell",
+            "command": "make test",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        }
+    ]
+}
