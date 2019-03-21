@@ -1,0 +1,5 @@
+{
+    "go.lintFlags": [
+        "--config=~/projects/home/go/src/github.com/ReanGD/go-algo/ci/.golangci.yml"
+    ]
+}
