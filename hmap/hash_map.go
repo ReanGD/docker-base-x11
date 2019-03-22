@@ -1,4 +1,4 @@
-package hash_map
+package hmap
 
 import "hash/crc32"
 

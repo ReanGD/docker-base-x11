@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ReanGD/go-algo/hash_map"
+	"github.com/ReanGD/go-algo/hmap"
 )
 
 func main() {
 	fmt.Println("run")
-	m := hash_map.New(hash_map.HashString)
+	m := hmap.New(hmap.HashString)
 	for i := 0; i != 50; i++ {
 		m.Insert(strconv.Itoa(i), i*10)
 	}
