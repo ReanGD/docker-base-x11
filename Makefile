@@ -3,7 +3,7 @@ export PATH := $(GOPATH)/bin:$(PATH)
 .PHONY: test dep lint lint_ci fmt build run postclone precommit clean help
 
 test: ## Run unittests
-	@go test -v -p=1 -count=1
+	@go test -v -p=1 -count=1 ./...
 
 dep: ## Get the dependencies
 	@go get -v -t -d ./...
