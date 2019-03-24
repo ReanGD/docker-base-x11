@@ -1,14 +1,17 @@
 export PATH := $(GOPATH)/bin:$(PATH)
 
-.PHONY: test dep lint lint_ci fmt build run postclone precommit clean help
+.PHONY: test bench dep lint lint_ci fmt build run postclone precommit clean help
 
 test: ## Run unittests
-	@go test -v -p=1 -count=1 ./...
+	@env go test -v -p=1 -count=1 ./...
+
+bench: ## Run benchmarks
+	@env go test -bench=. -benchtime=10s -benchmem ./...
 
 dep: ## Get the dependencies
-	@go get -v -t -d ./...
-	@go get -v -u github.com/sqs/goreturns
-	@go get -v -u github.com/golangci/golangci-lint/cmd/golangci-lint
+	@env go get -v -t -d ./...
+	@env go get -v -u github.com/sqs/goreturns
+	@env go get -v -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 lint: ## Lint the files
 	@golangci-lint run --config=./ci/.golangci.yml
@@ -27,10 +30,10 @@ run: build ## Build and run a binary file
 
 postclone: dep ## Post clone actions
 
-precommit: fmt lint_ci ## Precommit actions
+precommit: fmt lint_ci test ## Precommit actions
 
 clean: ## Remove previous build
-	@go clean
+	@env go clean
 
 help: ## Display this help screen
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
