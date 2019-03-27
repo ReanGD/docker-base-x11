@@ -2,6 +2,10 @@ package hmap
 
 import "hash/crc32"
 
+const (
+	bucketMaxSizeShift = 3
+)
+
 type KeyType interface{}
 type ValueType interface{}
 
@@ -11,52 +15,61 @@ type item struct {
 	hashValue uint32
 }
 
-type bucket struct {
-	items  [8]item
-	filled uint32
-}
-
 type HashMap struct {
-	buckets    []bucket
-	hash       func(KeyType) uint32
-	bucketMask uint32
+	items       []item
+	bucketsSize []uint32
+	hash        func(KeyType) uint32
+	bucketMask  uint32
 }
 
 func New(hash func(KeyType) uint32) *HashMap {
 	bucketsCount := uint32(2)
 	return &HashMap{
-		buckets:    make([]bucket, bucketsCount),
-		hash:       hash,
-		bucketMask: bucketsCount - 1,
+		items:       make([]item, bucketsCount<<bucketMaxSizeShift),
+		bucketsSize: make([]uint32, bucketsCount),
+		hash:        hash,
+		bucketMask:  bucketsCount - 1,
 	}
 }
 
 func (m *HashMap) rehash() {
-	oldBuckets := m.buckets
-	oldLen := len(oldBuckets)
-	m.buckets = make([]bucket, oldLen<<1)
-	m.bucketMask = uint32(len(m.buckets) - 1)
-	for bucketIndex := 0; bucketIndex != oldLen; bucketIndex++ {
-		filled := oldBuckets[bucketIndex].filled
-		for i := uint32(0); i != filled; i++ {
-			_ = m.insert(oldBuckets[bucketIndex].items[i])
+	oldItems := m.items
+	oldBucketsSize := m.bucketsSize
+	oldIBucketsCount := m.bucketMask + 1
+
+	newBucketsCount := oldIBucketsCount << 1
+	m.items = make([]item, newBucketsCount<<bucketMaxSizeShift)
+	m.bucketsSize = make([]uint32, newBucketsCount)
+	m.bucketMask = newBucketsCount - 1
+
+	for bucketIndex := uint32(0); bucketIndex != oldIBucketsCount; bucketIndex++ {
+		bucketStartInd := bucketIndex << bucketMaxSizeShift
+		bucketEndInd := bucketStartInd + oldBucketsSize[bucketIndex]
+
+		for i := bucketStartInd; i != bucketEndInd; i++ {
+			newBucketIndex := oldItems[i].hashValue & m.bucketMask
+			index := newBucketIndex<<bucketMaxSizeShift + m.bucketsSize[newBucketIndex]
+			m.items[index] = oldItems[i]
+			m.bucketsSize[newBucketIndex]++
 		}
 	}
 }
 
 func (m *HashMap) insert(element item) bool {
 	bucketIndex := element.hashValue & m.bucketMask
-	filled := m.buckets[bucketIndex].filled
-	for i := uint32(0); i != filled; i++ {
-		if m.buckets[bucketIndex].items[i].key == element.key {
-			m.buckets[bucketIndex].items[i].value = element.value
+	bucketStartInd := bucketIndex << bucketMaxSizeShift
+	bucketEndInd := bucketStartInd + m.bucketsSize[bucketIndex]
+
+	for i := bucketStartInd; i != bucketEndInd; i++ {
+		if m.items[i].hashValue == element.hashValue && m.items[i].key == element.key {
+			m.items[i].value = element.value
 			return true
 		}
 	}
 
-	if filled != 8 {
-		m.buckets[bucketIndex].items[filled] = element
-		m.buckets[bucketIndex].filled++
+	if m.bucketsSize[bucketIndex] != 8 {
+		m.items[bucketEndInd] = element
+		m.bucketsSize[bucketIndex]++
 		return true
 	}
 
@@ -69,17 +82,20 @@ func (m *HashMap) Insert(key KeyType, value ValueType) {
 		value:     value,
 		hashValue: m.hash(key),
 	}
-	if !m.insert(element) {
+	for !m.insert(element) {
 		m.rehash()
-		m.insert(element)
 	}
 }
 
 func (m *HashMap) Get(key KeyType) (ValueType, bool) {
-	bucketIndex := m.hash(key) & m.bucketMask
-	for i := uint32(0); i != m.buckets[bucketIndex].filled; i++ {
-		if m.buckets[bucketIndex].items[i].key == key {
-			return m.buckets[bucketIndex].items[i].value, true
+	hashValue := m.hash(key)
+	bucketIndex := hashValue & m.bucketMask
+	bucketStartInd := bucketIndex << bucketMaxSizeShift
+	bucketEndInd := bucketStartInd + m.bucketsSize[bucketIndex]
+
+	for i := bucketStartInd; i != bucketEndInd; i++ {
+		if m.items[i].hashValue == hashValue && m.items[i].key == key {
+			return m.items[i].value, true
 		}
 	}
 
@@ -87,12 +103,16 @@ func (m *HashMap) Get(key KeyType) (ValueType, bool) {
 }
 
 func (m *HashMap) Remove(key KeyType) {
-	bucketIndex := m.hash(key) & m.bucketMask
-	filled := m.buckets[bucketIndex].filled
-	for i := uint32(0); i != filled; i++ {
-		if m.buckets[bucketIndex].items[i].key == key {
-			m.buckets[bucketIndex].items[i] = m.buckets[bucketIndex].items[filled-1]
-			m.buckets[bucketIndex].filled--
+	hashValue := m.hash(key)
+	bucketIndex := hashValue & m.bucketMask
+	bucketStartInd := bucketIndex << bucketMaxSizeShift
+	bucketEndInd := bucketStartInd + m.bucketsSize[bucketIndex]
+
+	for i := bucketStartInd; i != bucketEndInd; i++ {
+		if m.items[i].hashValue == hashValue && m.items[i].key == key {
+			m.items[i] = m.items[bucketEndInd-1]
+			m.bucketsSize[bucketIndex]--
+			return
 		}
 	}
 
